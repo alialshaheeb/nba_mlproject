@@ -1,0 +1,33 @@
+# Install first: pip install pandas
+from urllib.request import urlopen
+import tarfile
+from io import BytesIO
+import pandas as pd
+
+def load_nba_data(seasons=[2022, 2023], data_type="nbastats"):
+    with urlopen("https://raw.githubusercontent.com/shufinskiy/nba_data/main/list_data.txt") as f:
+        v = f.read().decode('utf-8').strip()
+
+    name_v = [s.split("=")[0] for s in v.split("\n")]
+    element_v = [s.split("=")[1] for s in v.split("\n")]
+
+    need = [f"{data_type}_{s}" for s in seasons]
+    urls = {n: e for n, e in zip(name_v, element_v) if n in need}
+
+    dfs = []
+    for name, url in urls.items():
+        print(f"Loading {name}...")
+        with urlopen(url) as r:
+            content = r.read()
+        with tarfile.open(fileobj=BytesIO(content), mode='r:xz') as tar:
+            csv = tar.extractfile(f"{name}.csv")
+            dfs.append(pd.read_csv(csv))
+
+    return pd.concat(dfs, ignore_index=True)
+
+df = load_nba_data(seasons=[2022, 2023])
+
+# Filter to foul events only
+fouls = df[df['EVENTMSGTYPE'] == 6]  # 6 = foul in NBA play-by-play
+print(fouls.shape)
+print(fouls.head())
