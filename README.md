@@ -1,6 +1,6 @@
 # NBA Trade Value Model
 
-I built this to answer a question I kept running into watching NBA trade rumors: *what is a player actually worth?* Not in terms of vibes or Twitter consensus, but in dollars, tied to their on-court production.
+We built this to answer a question we kept running into watching NBA trade rumors: *what is a player actually worth?* Not in terms of vibes or Twitter consensus, but in dollars, tied to their on-court production.
 
 The model pulls 16 seasons of advanced stats from Basketball-Reference (2009-10 through 2024-25), converts each player-season into a 0–100 OVR score calibrated within that year's league, and maps that OVR to a fair-market salary using the 2025-26 cap structure. You can look up historical ratings, predict next season, or roll forward multiple years for players like LeBron or Curry who you want to project into the future.
 
