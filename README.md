@@ -209,8 +209,8 @@ MAE of ~10 means the typical prediction lands within 10 OVR points of reality. T
 
 ## What's missing / what we would add next
 
-- **Surplus value** — right now the trade value is a deterministic OVR → dollar mapping. What I actually want is a learned salary regression that predicts what a player *should* be paid based on their stats, then computes the gap from their actual contract. That would let you say "Chet Holmgren is worth $26M more than he costs" instead of just "tier: All-Star." I need historical salary data for that, which I haven't scraped yet.
-- **Confidence bands on multi-year forecasts** — the roll-forward predictions just give you a single number, but uncertainty grows every year you project out. I'd like to attach some kind of confidence interval to those.
+- **Surplus value** — right now the trade value is a deterministic OVR → dollar mapping. What we actually want is a learned salary regression that predicts what a player *should* be paid based on their stats, then computes the gap from their actual contract. That would let you say "Chet Holmgren is worth $26M more than he costs" instead of just "tier: All-Star." We need historical salary data for that, which we haven't scraped yet.
+- **Confidence bands on multi-year forecasts** — the roll-forward predictions just give you a single number, but uncertainty grows every year you project out. We would like to attach some kind of confidence interval to those.
 - **Contract-aware features** — years of guaranteed control, no-trade clauses, supermax eligibility, rookie scale status. None of that feeds into the model right now, and it matters a lot for actual trade value.
 
 ---
