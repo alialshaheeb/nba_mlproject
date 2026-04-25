@@ -1,0 +1,7 @@
+{
+  "type": "ensemble_avg",
+  "components": [
+    "optA_xgboost",
+    "optA_mlp"
+  ]
+}

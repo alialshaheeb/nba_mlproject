@@ -1,0 +1,43 @@
+{
+  "type": "mlp",
+  "hidden_layer_sizes": [
+    64,
+    32
+  ],
+  "activation": "relu",
+  "n_iter": 93,
+  "input_dim": 29,
+  "output_dim": 1,
+  "total_parameters": 4033,
+  "feature_names": [
+    "Age",
+    "G",
+    "GS",
+    "MP",
+    "PER",
+    "TS%",
+    "3PAr",
+    "FTr",
+    "ORB%",
+    "DRB%",
+    "TRB%",
+    "AST%",
+    "STL%",
+    "BLK%",
+    "TOV%",
+    "USG%",
+    "OWS",
+    "DWS",
+    "WS",
+    "WS/48",
+    "OBPM",
+    "DBPM",
+    "BPM",
+    "VORP",
+    "Pos_C",
+    "Pos_PF",
+    "Pos_PG",
+    "Pos_SF",
+    "Pos_SG"
+  ]
+}
