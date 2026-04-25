@@ -198,4 +198,4 @@ Trained on (year N → year N+1) pairs from 2009-10 through 2021-22, tested on 2
 ## Notes
 
 - Raw data was scraped from Basketball-Reference. The 2024-25 portion needed manual reconstruction due to a header-corruption bug in the original scraper; that's been fixed and the raw file is correct.
-- All trained models are saved in inspectable native formats (`.json`, `.pt`, `.npy`) — never pickle. You can open any model file in a text editor and read it.
+- All trained models are saved in inspectable native formats (`.json`, `.pt`, `.npy`) 
