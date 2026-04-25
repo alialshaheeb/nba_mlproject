@@ -1,9 +1,3 @@
-"""Cleaning functions for the trade-value modeling project.
-
-The canonical cleaned outputs live in ``data/processed/``. Notebooks and
-scripts should import from this module rather than reimplementing cleaning
-logic locally.
-"""
 from __future__ import annotations
 
 import pandas as pd
@@ -44,7 +38,7 @@ def clean_advanced_stats(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def clean_salary_data(df: pd.DataFrame) -> pd.DataFrame:
-    """Clean the BR salary table (placeholder — current salary file already cleaned)."""
+    """Clean the BR salary table."""
     raise NotImplementedError("Salary cleaning will be rewritten when historical salaries are scraped.")
 
 
@@ -52,5 +46,5 @@ def merge_stats_and_salary(
     stats_df: pd.DataFrame,
     salary_df: pd.DataFrame,
 ) -> pd.DataFrame:
-    """Merge cleaned stats and salary on player_id (placeholder)."""
+    """Merge cleaned stats and salary on player_id."""
     raise NotImplementedError("Stats-salary merge will be implemented in the modeling stage.")

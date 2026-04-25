@@ -10,9 +10,8 @@ def prepare_features(df: pd.DataFrame, feature_template: pd.DataFrame | None = N
     """Build a numeric feature matrix from a pairs DataFrame.
 
     Numeric stats are median-imputed. ``Pos`` is one-hot encoded.
-    Pass ``feature_template`` (a previously-prepared train X) to lock the
-    output column order — required so test/val matrices align with train.
-    """
+    Pass ``feature_template`` to lock the output column order — required so test/val matrices align with train."""
+    
     X = df[FEATURE_NUMERIC].copy()
     X = X.fillna(X.median(numeric_only=True))
 

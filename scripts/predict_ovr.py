@@ -6,7 +6,7 @@ Usage:
 Where ``year`` is the year-end of the target NBA season:
   2025  -> 2024-25 season  (lookup, latest in data)
   2026  -> 2025-26 season  (predict 1 year ahead)
-  2027  -> 2026-27 season  (predict 2 years ahead — multi-year roll-forward)
+  2027  -> 2026-27 season  (predict 2 years ahead)
   2024  -> 2023-24 season  (lookup, historical)
 
 Examples:

@@ -1,4 +1,4 @@
-"""Drive advanced-stats cleaning: load raw → clean → save processed."""
+"""Drive advanced-stats cleaning: load raw -> clean -> save processed."""
 from __future__ import annotations
 
 import sys

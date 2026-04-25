@@ -1,4 +1,4 @@
-"""Drive Stage 1 feature engineering: load clean stats → compute OVR → save scores."""
+"""Drive Stage 1 feature engineering: load clean stats -> compute OVR -> save scores."""
 from __future__ import annotations
 
 import sys

@@ -27,9 +27,9 @@ def _to_array(X) -> np.ndarray:
     return X.values if hasattr(X, "values") else np.asarray(X)
 
 
-# ---------------------------------------------------------------------------
+
 # XGBoost — single output
-# ---------------------------------------------------------------------------
+
 class XGBSingle:
     type_name = "xgboost_single"
 
@@ -73,9 +73,9 @@ class XGBSingle:
         return obj
 
 
-# ---------------------------------------------------------------------------
+
 # XGBoost — multi output (one estimator per target stat)
-# ---------------------------------------------------------------------------
+
 class XGBMulti:
     type_name = "xgboost_multi"
 
@@ -127,10 +127,10 @@ class XGBMulti:
         return obj
 
 
-# ---------------------------------------------------------------------------
+
 # MLP — weights stored as JSON, custom forward-prop predict so loading
 # doesn't depend on sklearn's internal state machinery.
-# ---------------------------------------------------------------------------
+
 class MLPModel:
     type_name = "mlp"
 
@@ -219,9 +219,9 @@ class MLPModel:
         return obj
 
 
-# ---------------------------------------------------------------------------
+
 # Autoencoder + KNN
-# ---------------------------------------------------------------------------
+
 class _Autoencoder(nn.Module):
     def __init__(self, input_dim: int, latent_dim: int = 8) -> None:
         super().__init__()
@@ -339,9 +339,9 @@ class AutoencoderKNN:
         return obj
 
 
-# ---------------------------------------------------------------------------
+
 # Ensemble
-# ---------------------------------------------------------------------------
+
 class EnsembleAverage:
     type_name = "ensemble_avg"
 
@@ -365,9 +365,8 @@ class EnsembleAverage:
         return cls(models=models, model_names=cfg["components"])
 
 
-# ---------------------------------------------------------------------------
 # Public training API + uniform loader
-# ---------------------------------------------------------------------------
+
 def train_xgb(X, y):
     """Auto-dispatch: XGBSingle for 1d y, XGBMulti for 2d y."""
     if np.asarray(y).ndim == 1:

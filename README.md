@@ -1,38 +1,45 @@
 # NBA Trade Value Model
 
-Predict an NBA player's overall rating (0–100) for any season — past, current, or future — and convert that rating into a fair-market dollar value. Built on 16 seasons of advanced stats from Basketball-Reference (2009-10 through 2024-25).
+I built this to answer a question I kept running into watching NBA trade rumors: *what is a player actually worth?* Not in terms of vibes or Twitter consensus, but in dollars, tied to their on-court production.
 
-## What's in the box
+The model pulls 16 seasons of advanced stats from Basketball-Reference (2009-10 through 2024-25), converts each player-season into a 0–100 OVR score calibrated within that year's league, and maps that OVR to a fair-market salary using the 2025-26 cap structure. You can look up historical ratings, predict next season, or roll forward multiple years for players like LeBron or Curry who you want to project into the future.
 
-- **A 0–100 OVR** computed per player-season, calibrated against league peers within each season (so a 5 VORP in 2014 isn't compared to a 5 VORP in 2024).
-- **Eight forecasting models** trained to predict next-season OVR: XGBoost, MLP, Autoencoder + KNN, and an Ensemble — each in two flavors (predict OVR directly, or predict 8 underlying stats then apply the formula).
-- **A CLI tool** that takes a player name and a year and prints the OVR + a tiered trade value in dollars.
-- **An inspectable model store** — every trained model is saved in human-readable JSON / standard ML formats. No pickle.
+---
+
+## What it does
+
+- **OVR scoring (0–100)** — computed per player-season, normalized within each year so a 5 VORP in 2014 doesn't compare unfairly to a 5 VORP in 2024.
+- **Eight forecasting models** — XGBoost, MLP, Autoencoder + KNN, and an Ensemble, each in two flavors: Option A predicts OVR directly, Option B predicts 8 underlying stats then runs them through the OVR formula.
+- **CLI predictor** — give it a player name and a year, get back an OVR and a tiered trade value in dollars.
+- **Readable model files** — every trained model is saved in JSON or standard ML formats. No pickle files, so you can actually open and inspect them.
+
+---
 
 ## Setup
 
 ```bash
-# Optional: create a virtual environment
+# Optional but recommended: create a virtual environment
 python3 -m venv .venv && source .venv/bin/activate
 
-# Install dependencies
 pip install -r requirements.txt
 ```
 
-Note: on macOS you may need `brew install libomp` for XGBoost.
+> On macOS you may need `brew install libomp` for XGBoost.
 
-## Pipeline — four commands, in order
+---
 
-Each step reads its predecessor's output. Run them top-to-bottom on a fresh clone:
+## Running the pipeline
+
+Four scripts, run in order. Each one reads what the previous step wrote:
 
 ```bash
-python3 scripts/run_cleaning.py            # 1. raw stats  -> cleaned CSV
-python3 scripts/run_features.py            # 2. cleaned    -> per-season OVR scores
-python3 scripts/build_training_pairs.py    # 3. scores     -> (year N, year N+1) pairs
-python3 scripts/train_models.py            # 4. pairs      -> 8 trained models + predictions
+python3 scripts/run_cleaning.py            # raw stats -> cleaned CSV
+python3 scripts/run_features.py            # cleaned   -> per-season OVR scores
+python3 scripts/build_training_pairs.py    # scores    -> (year N, year N+1) pairs
+python3 scripts/train_models.py            # pairs     -> 8 trained models + predictions
 ```
 
-After step 4 you have everything needed to use the CLI tool below.
+Once step 4 finishes you're ready to use the CLI.
 
 | Step | Reads | Writes |
 |---|---|---|
@@ -41,15 +48,17 @@ After step 4 you have everything needed to use the CLI tool below.
 | 3 — `build_training_pairs.py` | `advanced_stats_clean.csv` + `player_scores.csv` | `data/processed/training_pairs.csv` |
 | 4 — `train_models.py` | `training_pairs.csv` | `outputs/models/<name>/` (8 dirs) + `outputs/predictions/test_predictions.csv` |
 
-## CLI tool — predict an OVR and trade value
+---
+
+## CLI — predict OVR and trade value
 
 ```bash
 python3 scripts/predict_ovr.py "<player>" <year>
 ```
 
-`year` is the year-end of the NBA season (so `2026` = 2025-26).
+`year` is the year-end of the NBA season — so `2026` means the 2025-26 season.
 
-### Three modes (auto-selected by year)
+The tool auto-selects one of three modes based on the year you pass:
 
 **Past or current season** (`year ≤ 2025`) — looks up the actual OVR from the data:
 
@@ -62,7 +71,7 @@ Stephen Curry
   Trade value (Stage 2 / A): $40.6M  (All-Star)
 ```
 
-**One year ahead** (`year = 2026`) — runs all 8 models, marks the best with `<- best`:
+**One year ahead** (`year = 2026`) — runs all 8 models and marks the best one:
 
 ```bash
 $ python3 scripts/predict_ovr.py "jokic" 2026
@@ -82,7 +91,7 @@ Nikola Jokić
   optB_ensemble                      77.4           $20.9M Quality Starter
 ```
 
-**Multi-year** (`year ≥ 2027`) — iterative roll-forward using the best Option B model:
+**Multi-year** (`year ≥ 2027`) — rolls forward year-by-year using the best Option B model. Errors compound the further out you go, so take these with some skepticism:
 
 ```bash
 $ python3 scripts/predict_ovr.py "LeBron James" 2028
@@ -98,14 +107,13 @@ LeBron James
   2027-28      43           74.2         $17.2M Rotation
 ```
 
-### Quality of life
+A few quality-of-life things I added:
+- **Name matching ignores accents and case** — `"jokic"` finds `"Nikola Jokić"`, `"LUKA DONCIC"` finds `"Luka Dončić"`.
+- **Typo suggestions** — if the name doesn't match, it prints "Did you mean: ..." with up to 5 close options.
 
-- **Accent / case insensitive name matching** — `"jokic"` finds `"Nikola Jokić"`, `"LUKA DONCIC"` finds `"Luka Dončić"`.
-- **Typo suggestions** — wrong name prints "Did you mean: ..." with up to 5 close matches.
+### How OVR maps to dollars
 
-### Tier mapping (OVR → $)
-
-Linear interpolation calibrated against the 2025-26 NBA cap structure. Defined in [src/models/trade_value.py](src/models/trade_value.py) — easy to retune.
+Calibrated against the 2025-26 NBA cap. The full interpolation logic is in [src/models/trade_value.py](src/models/trade_value.py) if you want to retune it.
 
 | OVR | Tier | Approx $ |
 |---|---|---|
@@ -116,6 +124,8 @@ Linear interpolation calibrated against the 2025-26 NBA cap structure. Defined i
 | 50–64 | Bench | $3–5M |
 | <50 | Marginal | <$2.4M |
 
+---
+
 ## Inspecting trained models
 
 ```bash
@@ -123,13 +133,15 @@ python3 scripts/inspect_model.py                 # list all 8 models
 python3 scripts/inspect_model.py optA_xgboost    # detail one model
 ```
 
-Or open the model files directly — they're all in human-readable formats:
+Or open the files directly — they're in readable formats:
 
 ```bash
-code outputs/models/optA_xgboost/model.json      # XGBoost decision trees as JSON
+code outputs/models/optA_xgboost/model.json      # XGBoost decision trees
 code outputs/models/optA_mlp/weights.json        # MLP layer weights
 code outputs/models/optA_ensemble/config.json    # ensemble component list
 ```
+
+---
 
 ## Comparison notebook
 
@@ -137,7 +149,9 @@ code outputs/models/optA_ensemble/config.json    # ensemble component list
 jupyter notebook notebooks/model_comparison.ipynb
 ```
 
-Pre-rendered with metrics tables, predicted-vs-actual scatters, residual plots, and a notable-players bar chart. Run on the held-out 2024-25 test season.
+Pre-rendered with metrics tables, predicted-vs-actual scatter plots, residual plots, and a notable-players bar chart. Everything is run on the held-out 2024-25 test season.
+
+---
 
 ## Project structure
 
@@ -147,7 +161,7 @@ nba_mlproject/
 │   ├── raw/
 │   │   ├── advanced_stats_2010_2025.csv     # 16 seasons of player stats
 │   │   └── player_salary.csv                # current contracts (2025-26 onward)
-│   └── processed/                            # all generated by the pipeline
+│   └── processed/                            # generated by the pipeline
 ├── src/
 │   ├── data/clean_data.py                   # cleaning logic
 │   ├── features/build_features.py           # OVR computation
@@ -155,26 +169,28 @@ nba_mlproject/
 │       ├── pairs.py                         # (N, N+1) training-pair builder
 │       ├── preprocess.py                    # feature matrix prep
 │       ├── formula.py                       # OVR formula (used by Option B)
-│       ├── trade_value.py                   # tier-based OVR -> $ mapping
-│       └── models.py                        # XGBoost, MLP, Autoencoder, Ensemble + save/load
+│       ├── trade_value.py                   # OVR -> $ mapping
+│       └── models.py                        # XGBoost, MLP, Autoencoder, Ensemble
 ├── scripts/
 │   ├── run_cleaning.py
 │   ├── run_features.py
 │   ├── build_training_pairs.py
 │   ├── train_models.py
-│   ├── predict_ovr.py                       # the user-facing CLI
+│   ├── predict_ovr.py                       # main CLI
 │   └── inspect_model.py                     # peek inside a saved model
 ├── notebooks/
-│   └── model_comparison.ipynb               # plots + metrics
+│   └── model_comparison.ipynb
 ├── outputs/
-│   ├── models/                              # 8 trained models, native formats
+│   ├── models/                              # 8 trained models
 │   └── predictions/                         # test_predictions.csv
 └── requirements.txt
 ```
 
-## Test-set performance
+---
 
-Trained on (year N → year N+1) pairs from 2009-10 through 2021-22, tested on 2023-24 → 2024-25 outcomes (~290 player-seasons).
+## Model performance
+
+Trained on year-N → year-N+1 pairs from 2009-10 through 2021-22, tested on 2023-24 → 2024-25 outcomes (~290 player-seasons).
 
 | Model | MAE | RMSE | R² | Top-10 overlap |
 |---|---:|---:|---:|---:|
@@ -187,15 +203,18 @@ Trained on (year N → year N+1) pairs from 2009-10 through 2021-22, tested on 2
 | optB_ensemble | 13.77 | 16.66 | 0.209 | 6/10 |
 | optB_mlp | 19.79 | 23.82 | -0.618 | 3/10 |
 
-**MAE ~10** means a typical prediction is within 10 OVR points of the actual. The ensemble is best for raw accuracy; XGBoost/autoencoder do best at correctly identifying the top 10.
+MAE of ~10 means the typical prediction lands within 10 OVR points of reality. The ensemble wins on raw accuracy; XGBoost and Autoencoder are better at identifying which players actually end up in the top 10.
 
-## What's not built (yet)
+---
 
-- **Real surplus value** — current trade value is a deterministic OVR → $ tier mapping. A learned salary regression (predicting fair price from stats, then comparing to actual contract) would let you say "Chet Holmgren is +$26M of surplus" instead of just "tier All-Star." Needs historical salary data — not yet scraped.
-- **Multi-year confidence bands** — multi-year OVR forecasts roll forward year by year and errors compound. There's no uncertainty estimate on the output.
-- **Contract-aware features** — years of guaranteed control, no-trade clauses, supermax flags, rookie-scale flags. None of these feed into the current model.
+## What's missing / what I'd add next
+
+- **Surplus value** — right now the trade value is a deterministic OVR → dollar mapping. What I actually want is a learned salary regression that predicts what a player *should* be paid based on their stats, then computes the gap from their actual contract. That would let you say "Chet Holmgren is worth $26M more than he costs" instead of just "tier: All-Star." I need historical salary data for that, which I haven't scraped yet.
+- **Confidence bands on multi-year forecasts** — the roll-forward predictions just give you a single number, but uncertainty grows every year you project out. I'd like to attach some kind of confidence interval to those.
+- **Contract-aware features** — years of guaranteed control, no-trade clauses, supermax eligibility, rookie scale status. None of that feeds into the model right now, and it matters a lot for actual trade value.
+
+---
 
 ## Notes
 
-- Raw data was scraped from Basketball-Reference. The 2024-25 portion needed manual reconstruction due to a header-corruption bug in the original scraper; that's been fixed and the raw file is correct.
-- All trained models are saved in inspectable native formats (`.json`, `.pt`, `.npy`) 
+The raw data was scraped from Basketball-Reference. The 2024-25 portion needed manual reconstruction because of a header-corruption bug in the original scraper — that's been fixed and the raw CSV is correct. All trained models are saved in inspectable native formats (`.json`, `.pt`, `.npy`) — no pickle files anywhere.

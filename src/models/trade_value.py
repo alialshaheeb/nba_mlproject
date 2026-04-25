@@ -1,6 +1,6 @@
 """Tier-based mapping from OVR (0-100) to dollar trade value.
 
-Stage 2 / Option A: deterministic, no ML. Breakpoints are anchored to the
+Stage 2 / Option A: deterministic. Breakpoints are anchored to the
 2025-26 NBA contract structure:
   * supermax (35% cap):       ~$55M
   * 25-30% max:              ~$38-46M

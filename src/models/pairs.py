@@ -22,7 +22,7 @@ def build_pairs(stats: pd.DataFrame, scores: pd.DataFrame) -> pd.DataFrame:
     """Pair each (player, season N) row with that player's (season N+1) row.
 
     Returns one row per consecutive-season pair, with feature columns from
-    season N and ``next_*`` target columns from season N+1.
+    season N and next target columns from season N+1.
     """
     merged = stats.merge(scores[["Player", "Season", "ovr"]], on=["Player", "Season"], how="inner")
     merged = merged.sort_values("MP", ascending=False).drop_duplicates(["Player", "Season"], keep="first")
