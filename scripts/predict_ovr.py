@@ -144,10 +144,9 @@ def _print_one_year(canonical: str, latest: pd.DataFrame, models: dict, feature_
     print(f"  {'model':<24} {'predicted OVR':>14} {'trade value':>16} {'tier':<18}")
     print(f"  {'-' * 24} {'-' * 14} {'-' * 16} {'-' * 18}")
     for name, val in rows:
-        marker = "  <- best" if name == BEST_OPTION_A else ""
         dollars = format_dollars(ovr_to_dollars(val))
         tier = ovr_to_tier(val)
-        print(f"  {name:<24} {val:>14.1f} {dollars:>16} {tier:<18}{marker}")
+        print(f"  {name:<24} {val:>14.1f} {dollars:>16} {tier:<18}")
     print(f"\n  Note: typical model error is ~10 OVR points (MAE on held-out test set).")
     print(f"  Trade value is a tier-based mapping of OVR -> $ (no salary model trained yet).")
 
