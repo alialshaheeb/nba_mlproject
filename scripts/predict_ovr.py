@@ -9,9 +9,6 @@ Where ``year`` is the year-end of the target NBA season:
   2027  -> 2026-27 season  (predict 2 years ahead)
   2024  -> 2023-24 season  (lookup, historical)
 
-Examples:
-  python3 scripts/predict_ovr.py "Nikola Jokić" 2026
-  python3 scripts/predict_ovr.py "LeBron James" 2027
   python3 scripts/predict_ovr.py "Stephen Curry" 2024
 """
 from __future__ import annotations
@@ -118,8 +115,8 @@ def _print_lookup(canonical: str, row: pd.Series) -> None:
     print(f"  {row['Season_Label']} | Team: {row['Team']} | Age: {int(row['Age'])} | G: {int(row['G'])} | MP: {int(row['MP'])}")
     if pd.notna(row.get("ovr")):
         ovr = float(row["ovr"])
-        print(f"  Actual OVR (from data):    {ovr:.1f}")
-        print(f"  Trade value (Stage 2 / A): {format_dollars(ovr_to_dollars(ovr))}  ({ovr_to_tier(ovr)})")
+        print(f"  Actual OVR :    {ovr:.1f}")
+        print(f"  Trade value : {format_dollars(ovr_to_dollars(ovr))}  ({ovr_to_tier(ovr)})")
     else:
         print("  No OVR for this season (player did not meet qualification: MP>=500, G>=20).")
 
@@ -148,7 +145,7 @@ def _print_one_year(canonical: str, latest: pd.DataFrame, models: dict, feature_
         dollars = format_dollars(ovr_to_dollars(val))
         tier = ovr_to_tier(val)
         print(f"  {name:<24} {val:>14.1f} {dollars:>16} {tier:<18}{marker}")
-    print(f"\n  Note: typical model error is ~10 OVR points (MAE on held-out test set).")
+    print(f"\n  Note: typical model error is ~10 OVR points.")
     print(f"  Trade value is a tier-based mapping of OVR -> $ (no salary model trained yet).")
 
 
