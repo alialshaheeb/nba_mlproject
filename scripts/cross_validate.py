@@ -4,13 +4,8 @@ For each fold year F:
   Train: pairs where Season < F
   Test:  pairs where Season == F
 
-Trains all 8 model variants per fold and reports per-fold + aggregate metrics.
-Does not replace ``scripts/train_models.py`` — that still produces the final
-saved artifacts using the full training data.
-
 Output:
   outputs/predictions/cv_results.csv  (one row per (fold, model))
-  Console: aggregate table and per-fold breakdown for the best model.
 """
 from __future__ import annotations
 

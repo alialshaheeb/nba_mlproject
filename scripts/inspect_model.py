@@ -1,5 +1,4 @@
-"""Print human-readable info about a saved model.
-
+"""Inspect a saved model's configuration and details.
 Usage:
   python3 scripts/inspect_model.py                  # list all models
   python3 scripts/inspect_model.py optA_xgboost     # detail one model

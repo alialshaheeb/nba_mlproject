@@ -1,4 +1,4 @@
-"""Train all 4 algorithms x 2 options (A, B) and save in human-readable formats.
+"""Train models on the training pairs, evaluate on the test pairs.
 
 Time-based split:
   Train: pairs where Season <= 2022 (predicting up to 2023-24 outcomes)

@@ -1,4 +1,4 @@
-"""Model wrappers for OVR forecasting with native, human-readable save/load.
+"""Model definitions, training, and saving/loading logic.
 
 Save format: each fitted model writes to its own folder under ``outputs/models/<name>/``,
 always containing ``config.json`` plus algorithm-native artifacts:
