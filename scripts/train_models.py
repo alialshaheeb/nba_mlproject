@@ -31,7 +31,7 @@ from src.models.pairs import (  # noqa: E402
     TARGET_OPTION_B_COLS,
     TARGET_OVR_COL,
 )
-from src.models.preprocess import prepare_features  # noqa: E402
+from src.models.preprocess import compute_train_medians, prepare_features  # noqa: E402
 
 PAIRS = REPO_ROOT / "data" / "processed" / "training_pairs.csv"
 MODELS_DIR = REPO_ROOT / "outputs" / "models"
@@ -96,9 +96,10 @@ def main() -> None:
     test_df  = pairs[pairs["Season"] == TEST_SEASON].reset_index(drop=True)
     print(f"Train: {len(train_df):,} | Val: {len(val_df):,} | Test: {len(test_df):,}")
 
-    X_train = prepare_features(train_df)
-    X_val   = prepare_features(val_df,  feature_template=X_train)
-    X_test  = prepare_features(test_df, feature_template=X_train)
+    medians = compute_train_medians(train_df)
+    X_train = prepare_features(train_df, medians=medians)
+    X_val   = prepare_features(val_df,  feature_template=X_train, medians=medians)
+    X_test  = prepare_features(test_df, feature_template=X_train, medians=medians)
 
     yA_train = train_df[TARGET_OVR_COL].values
     yA_val   = val_df[TARGET_OVR_COL].values

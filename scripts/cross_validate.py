@@ -30,7 +30,7 @@ from src.models.pairs import (  # noqa: E402
     TARGET_OPTION_B_COLS,
     TARGET_OVR_COL,
 )
-from src.models.preprocess import prepare_features  # noqa: E402
+from src.models.preprocess import compute_train_medians, prepare_features  # noqa: E402
 
 warnings.filterwarnings("ignore", category=UserWarning, module="sklearn")
 
@@ -94,8 +94,9 @@ def main() -> None:
         target_label = f"{int(test_df['next_Season'].iloc[0]) - 1}-{str(int(test_df['next_Season'].iloc[0]))[2:]}"
         print(f"\nFold: test season={fold_year} (predicting {target_label}) | train={len(train_df):,} test={len(test_df):,}")
 
-        X_train = prepare_features(train_df)
-        X_test = prepare_features(test_df, feature_template=X_train)
+        medians = compute_train_medians(train_df)
+        X_train = prepare_features(train_df, medians=medians)
+        X_test = prepare_features(test_df, feature_template=X_train, medians=medians)
         yA_train = train_df[TARGET_OVR_COL].values
         yA_test  = test_df[TARGET_OVR_COL].values
         yB_train = train_df[TARGET_OPTION_B_COLS].values

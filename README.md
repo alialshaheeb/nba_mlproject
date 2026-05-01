@@ -37,16 +37,18 @@ python3 scripts/run_cleaning.py            # raw stats -> cleaned CSV
 python3 scripts/run_features.py            # cleaned   -> per-season OVR scores
 python3 scripts/build_training_pairs.py    # scores    -> (year N, year N+1) pairs
 python3 scripts/train_models.py            # pairs     -> 8 trained models + predictions
+python3 scripts/cross_validate.py          # optional — 6-fold time-series CV
 ```
 
-Once step 4 finishes you're ready to use the CLI.
+Once step 4 finishes you're ready to use the CLI. Step 5 is independent — it re-evaluates all 8 models across 6 held-out seasons and writes a per-fold metrics table.
 
 | Step | Reads | Writes |
 |---|---|---|
 | 1 — `run_cleaning.py` | `data/raw/advanced_stats_2010_2025.csv` | `data/processed/advanced_stats_clean.csv` |
 | 2 — `run_features.py` | `data/processed/advanced_stats_clean.csv` | `data/processed/player_scores.csv` |
 | 3 — `build_training_pairs.py` | `advanced_stats_clean.csv` + `player_scores.csv` | `data/processed/training_pairs.csv` |
-| 4 — `train_models.py` | `training_pairs.csv` | `outputs/models/<name>/` (8 dirs) + `outputs/predictions/test_predictions.csv` |
+| 4 — `train_models.py` | `training_pairs.csv` | `outputs/models/<name>/` (8 dirs) + `outputs/predictions/{val,test}_predictions.csv` |
+| 5 — `cross_validate.py` | `training_pairs.csv` | `outputs/predictions/cv_results.csv` |
 
 ---
 
@@ -71,7 +73,7 @@ Stephen Curry
   Trade value (Stage 2 / A): $40.6M  (All-Star)
 ```
 
-**One year ahead** (`year = 2026`) — runs all 8 models and marks the best one:
+**One year ahead** (`year = 2026`) — runs all 8 models and shows their predictions side-by-side:
 
 ```bash
 $ python3 scripts/predict_ovr.py "jokic" 2026
@@ -81,14 +83,14 @@ Nikola Jokić
   Predicting:    2025-26 | Age: 30  (1 year ahead)
 
   model                     predicted OVR      trade value tier
-  optA_ensemble                      97.7           $52.7M Superstar          <- best
-  optA_xgboost                       90.0           $41.9M All-Star
-  optA_mlp                          105.5           $55.0M Superstar
-  optA_autoencoder                   91.9           $45.0M All-Star
-  optB_xgboost                       93.3           $47.3M All-Star
-  optB_mlp                           42.1            $2.5M Marginal
-  optB_autoencoder                   92.8           $46.4M All-Star
-  optB_ensemble                      77.4           $20.9M Quality Starter
+  optA_autoencoder                   89.8           $41.7M All-Star
+  optA_ensemble                      94.8           $49.7M All-Star
+  optA_mlp                          100.0           $55.0M Superstar
+  optA_xgboost                       89.6           $41.3M All-Star
+  optB_autoencoder                   91.0           $43.7M All-Star
+  optB_ensemble                      76.9           $20.3M Quality Starter
+  optB_mlp                           42.0            $2.5M Marginal
+  optB_xgboost                       93.6           $47.8M All-Star
 ```
 
 **Multi-year** (`year ≥ 2027`) — rolls forward year-by-year using the best Option B model. Errors compound the further out you go, so take these with some skepticism:
@@ -176,13 +178,14 @@ nba_mlproject/
 │   ├── run_features.py
 │   ├── build_training_pairs.py
 │   ├── train_models.py
+│   ├── cross_validate.py                    # 6-fold time-series CV
 │   ├── predict_ovr.py                       # main CLI
 │   └── inspect_model.py                     # peek inside a saved model
 ├── notebooks/
 │   └── model_comparison.ipynb
 ├── outputs/
 │   ├── models/                              # 8 trained models
-│   └── predictions/                         # test_predictions.csv
+│   └── predictions/                         # val, test, and CV result CSVs
 └── requirements.txt
 ```
 
@@ -190,10 +193,16 @@ nba_mlproject/
 
 ## Model performance
 
-Trained on year-N → year-N+1 pairs from 2009-10 through 2021-22, tested on 2023-24 → 2024-25 outcomes (~290 player-seasons).
+Three-way time-based split, no leakage:
+- **Train** — pairs with `Season ≤ 2021` (predicting outcomes through 2021-22)
+- **Validation** — `Season == 2022` (predicting 2022-23, held out for hyperparameter tuning)
+- **Test** — `Season == 2023` (predicting 2023-24 → 2024-25, only touched once for final reporting)
+
+Each split is ~290 player-seasons. The first row of the table is a naive baseline ("predict next year's OVR will equal this year's OVR") — every learned model needs to beat it to justify its existence.
 
 | Model | MAE | RMSE | R² | Top-10 overlap |
 |---|---:|---:|---:|---:|
+| _Naive baseline (next = current)_ | _11.66_ | _15.00_ | _0.359_ | _—_ |
 | **optA_ensemble** | **10.17** | 12.87 | **0.528** | 5/10 |
 | optA_mlp | 10.41 | 13.19 | 0.504 | 4/10 |
 | optA_xgboost | 10.58 | 13.21 | 0.502 | **7/10** |
@@ -204,6 +213,10 @@ Trained on year-N → year-N+1 pairs from 2009-10 through 2021-22, tested on 202
 | optB_mlp | 19.79 | 23.82 | -0.618 | 3/10 |
 
 MAE of ~10 means the typical prediction lands within 10 OVR points of reality. The ensemble wins on raw accuracy; XGBoost and Autoencoder are better at identifying which players actually end up in the top 10.
+
+The naive baseline matters: a model that just guesses "same as last year" already explains 35.9% of variance, because production is auto-correlated. Three of our eight models (optB_ensemble, optB_autoencoder lower bound, optB_mlp) **fail to beat it** — they're worse than doing nothing. The top three Option-A models (ensemble, MLP, XGBoost) push R² from 0.36 → 0.50–0.53, which is the real signal we're adding.
+
+Across the 6-fold cross-validation, the naive baseline averages **MAE 11.90 ± 0.31, R² 0.337 ± 0.038**, and `optA_ensemble` averages **MAE 11.03 ± 0.79, R² 0.480 ± 0.043** — a consistent ~0.14 R² lift across every held-out season, not just the test fold.
 
 ---
 
@@ -217,4 +230,9 @@ MAE of ~10 means the typical prediction lands within 10 OVR points of reality. T
 
 ## Notes
 
-The raw data was scraped from Basketball-Reference. The 2024-25 portion needed manual reconstruction because of a header-corruption bug in the original scraper — that's been fixed and the raw CSV is correct. All trained models are saved in inspectable native formats (`.json`, `.pt`, `.npy`) — no pickle files anywhere.
+A few methodology decisions worth flagging:
+
+- **No preprocessing leakage.** Median imputation values are computed on the training split only and reused for val/test (see `compute_train_medians` in `src/models/preprocess.py`). Same for the StandardScaler used inside the MLP and autoencoder.
+- **MLP outputs are soft-bounded to [0, 100].** Without bounding, the MLP extrapolates past 100 on extreme stat lines (e.g. Jokić's 2024-25 input was projected to 109 OVR). We apply a smooth saturation at predict time — identity behavior in the normal range, asymptotic to 100 at the top — so the displayed OVR is physically valid without a hard clamp.
+- **Raw data integrity.** The 2024-25 portion of the scrape originally had a header-corruption bug (`pd.read_csv(skiprows=1)` consumed the real header row, baking one player's stat line into the column names). That's been fixed and the raw CSV is correct.
+- **No pickle.** All trained models are saved in inspectable native formats (`.json`, `.pt`, `.npy`).

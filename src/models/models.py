@@ -168,6 +168,18 @@ class MLPModel:
             return 1.0 / (1.0 + np.exp(-x))
         return x
 
+    @staticmethod
+    def _soft_bound(x: np.ndarray, lo: float = 0.0, hi: float = 100.0, beta: float = 0.5) -> np.ndarray:
+        """Smoothly saturate values into [lo, hi].
+
+        Identity for x well inside the range, asymptotes smoothly to hi (and lo) at the extremes.
+        Avoids hard clipping artifacts at the bounds — a 99.5 stays 99.5, a 110 becomes ~99.99,
+        and the transition between is differentiable.
+        """
+        inv_beta = 1.0 / beta
+        upper = hi - inv_beta * np.logaddexp(0.0, beta * (hi - x))
+        return lo + inv_beta * np.logaddexp(0.0, beta * (upper - lo))
+
     def predict(self, X):
         X_arr = _to_array(X).astype(np.float64)
         Xs = (X_arr - self.scaler.mean_) / self.scaler.scale_
@@ -176,7 +188,12 @@ class MLPModel:
             a = a @ W + b
             if i < len(self.coefs) - 1:
                 a = self._activate(a)
-        return a.flatten() if a.shape[1] == 1 else a
+        # Soft-saturate single-output (OVR) predictions to [0, 100].
+        # Multi-output models predict raw stats with varied scales, so leave them alone.
+        if a.shape[1] == 1:
+            a = self._soft_bound(a, lo=0.0, hi=100.0, beta=0.5)
+            return a.flatten()
+        return a
 
     def save(self, dir_path: Path) -> None:
         d = Path(dir_path); d.mkdir(parents=True, exist_ok=True)
