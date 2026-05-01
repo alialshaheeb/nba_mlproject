@@ -11,8 +11,7 @@ The model pulls 16 seasons of advanced stats from Basketball-Reference (2009-10 
 - **OVR scoring (0–100)** — computed per player-season, normalized within each year so a 5 VORP in 2014 doesn't compare unfairly to a 5 VORP in 2024.
 - **Eight forecasting models** — XGBoost, MLP, Autoencoder + KNN, and an Ensemble, each in two flavors: Option A predicts OVR directly, Option B predicts 8 underlying stats then runs them through the OVR formula.
 - **CLI predictor** — give it a player name and a year, get back an OVR and a tiered trade value in dollars.
-- **Readable model files** — every trained model is saved in JSON or standard ML formats. No pickle files, so you can actually open and inspect them.
-
+- **Readable model files** — every trained model is saved in JSON or standard ML formats. 
 ---
 
 ## Setup
@@ -235,4 +234,4 @@ A few methodology decisions worth flagging:
 - **No preprocessing leakage.** Median imputation values are computed on the training split only and reused for val/test (see `compute_train_medians` in `src/models/preprocess.py`). Same for the StandardScaler used inside the MLP and autoencoder.
 - **MLP outputs are soft-bounded to [0, 100].** Without bounding, the MLP extrapolates past 100 on extreme stat lines (e.g. Jokić's 2024-25 input was projected to 109 OVR). We apply a smooth saturation at predict time — identity behavior in the normal range, asymptotic to 100 at the top — so the displayed OVR is physically valid without a hard clamp.
 - **Raw data integrity.** The 2024-25 portion of the scrape originally had a header-corruption bug (`pd.read_csv(skiprows=1)` consumed the real header row, baking one player's stat line into the column names). That's been fixed and the raw CSV is correct.
-- **No pickle.** All trained models are saved in inspectable native formats (`.json`, `.pt`, `.npy`).
+
