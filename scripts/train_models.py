@@ -1,10 +1,11 @@
-"""Train models on the training pairs, evaluate on the test pairs.
+"""Train models with a proper three-way time-based split.
 
-Time-based split:
-  Train: pairs where Season <= 2022 (predicting up to 2023-24 outcomes)
-  Test:  pairs where Season == 2023 (predicting 2024-25 — actuals available)
+  Train:      pairs where Season <= 2021 (12 seasons)
+  Validation: pairs where Season == 2022 (held out for hyperparameter tuning)
+  Test:       pairs where Season == 2023 (held out, only touched once)
 
 Each fitted model writes to ``outputs/models/<name>/``.
+Predictions for both val and test are written to ``outputs/predictions/``.
 """
 from __future__ import annotations
 
@@ -36,7 +37,8 @@ PAIRS = REPO_ROOT / "data" / "processed" / "training_pairs.csv"
 MODELS_DIR = REPO_ROOT / "outputs" / "models"
 PREDS_DIR = REPO_ROOT / "outputs" / "predictions"
 
-TRAIN_MAX_SEASON = 2022
+TRAIN_MAX_SEASON = 2021
+VAL_SEASON = 2022
 TEST_SEASON = 2023
 
 
@@ -56,18 +58,50 @@ def _wipe_model_dir(name: str) -> Path:
     return p
 
 
+def _evaluate(name: str, optA_models: dict, optB_models: dict, X: pd.DataFrame, y_true: np.ndarray, next_ages: np.ndarray, df: pd.DataFrame) -> pd.DataFrame:
+    """Predict, score, and return a DataFrame of predictions for one held-out split."""
+    out = pd.DataFrame({
+        "Player":      df["Player"].values,
+        "Season":      df["Season"].values,
+        "next_Season": df["next_Season"].values,
+        "Age":         df["Age"].values,
+        "actual_ovr":  y_true,
+    })
+
+    print(f"\n--- {name} metrics (vs actual next-season OVR) ---")
+    print(f"  {'model':<25} {'MAE':>8} {'RMSE':>8} {'R^2':>8}")
+
+    for model_name, model in optA_models.items():
+        pred = model.predict(X)
+        out[model_name] = pred
+        mt = _metrics(y_true, pred)
+        print(f"  {model_name:<23} {mt['mae']:>8.3f} {mt['rmse']:>8.3f} {mt['r2']:>8.3f}")
+
+    for model_name, model in optB_models.items():
+        pred_stats = model.predict(X)
+        pred_ovr = stats_to_ovr(pred_stats, next_ages)
+        out[model_name] = pred_ovr
+        mt = _metrics(y_true, pred_ovr)
+        print(f"  {model_name:<23} {mt['mae']:>8.3f} {mt['rmse']:>8.3f} {mt['r2']:>8.3f}")
+
+    return out
+
+
 def main() -> None:
     pairs = pd.read_csv(PAIRS)
     pairs = pairs.dropna(subset=[TARGET_OVR_COL] + TARGET_OPTION_B_COLS).reset_index(drop=True)
 
     train_df = pairs[pairs["Season"] <= TRAIN_MAX_SEASON].reset_index(drop=True)
+    val_df   = pairs[pairs["Season"] == VAL_SEASON].reset_index(drop=True)
     test_df  = pairs[pairs["Season"] == TEST_SEASON].reset_index(drop=True)
-    print(f"Train pairs: {len(train_df):,} | Test pairs: {len(test_df):,}")
+    print(f"Train: {len(train_df):,} | Val: {len(val_df):,} | Test: {len(test_df):,}")
 
     X_train = prepare_features(train_df)
-    X_test = prepare_features(test_df, feature_template=X_train)
+    X_val   = prepare_features(val_df,  feature_template=X_train)
+    X_test  = prepare_features(test_df, feature_template=X_train)
 
     yA_train = train_df[TARGET_OVR_COL].values
+    yA_val   = val_df[TARGET_OVR_COL].values
     yA_test  = test_df[TARGET_OVR_COL].values
     yB_train = train_df[TARGET_OPTION_B_COLS].values
 
@@ -94,42 +128,23 @@ def main() -> None:
         path = _wipe_model_dir(name)
         m.save(path)
         print(f"  outputs/models/{name}/")
-
     feature_cols_path = MODELS_DIR / "feature_columns.json"
     feature_cols_path.write_text(json.dumps(X_train.columns.tolist(), indent=2))
 
-    next_ages = (test_df["Age"].values + 1).astype(float)
-
-    out = pd.DataFrame({
-        "Player":      test_df["Player"].values,
-        "Season":      test_df["Season"].values,
-        "next_Season": test_df["next_Season"].values,
-        "Age":         test_df["Age"].values,
-        "actual_ovr":  yA_test,
-    })
-
-    print("\n--- Test metrics (vs actual next-season OVR) ---")
-    print(f"{'model':<25} {'MAE':>8} {'RMSE':>8} {'R^2':>8}")
-    for name, m in optA_models.items():
-        pred = m.predict(X_test)
-        out[name] = pred
-        mt = _metrics(yA_test, pred)
-        print(f"  {name:<23} {mt['mae']:>8.3f} {mt['rmse']:>8.3f} {mt['r2']:>8.3f}")
-
-    for name, m in optB_models.items():
-        pred_stats = m.predict(X_test)
-        pred_ovr = stats_to_ovr(pred_stats, next_ages)
-        out[name] = pred_ovr
-        mt = _metrics(yA_test, pred_ovr)
-        print(f"  {name:<23} {mt['mae']:>8.3f} {mt['rmse']:>8.3f} {mt['r2']:>8.3f}")
-
     PREDS_DIR.mkdir(parents=True, exist_ok=True)
-    out_path = PREDS_DIR / "test_predictions.csv"
 
-    rename_for_notebook = {f"opt{ab}_{algo}": f"opt{ab}_{algo}" for ab in ("A", "B") for algo in ("xgboost", "mlp", "autoencoder", "ensemble")}
-    out = out.rename(columns=rename_for_notebook)
-    out.to_csv(out_path, index=False)
-    print(f"\nWrote test predictions to {out_path.relative_to(REPO_ROOT)}")
+    next_ages_val  = (val_df["Age"].values + 1).astype(float)
+    val_preds = _evaluate("VALIDATION", optA_models, optB_models, X_val, yA_val, next_ages_val, val_df)
+    val_path = PREDS_DIR / "val_predictions.csv"
+    val_preds.to_csv(val_path, index=False)
+
+    next_ages_test = (test_df["Age"].values + 1).astype(float)
+    test_preds = _evaluate("TEST (held out)", optA_models, optB_models, X_test, yA_test, next_ages_test, test_df)
+    test_path = PREDS_DIR / "test_predictions.csv"
+    test_preds.to_csv(test_path, index=False)
+
+    print(f"\nWrote {val_path.relative_to(REPO_ROOT)}")
+    print(f"Wrote {test_path.relative_to(REPO_ROOT)}")
     print(f"Saved feature columns to {feature_cols_path.relative_to(REPO_ROOT)}")
 
 
